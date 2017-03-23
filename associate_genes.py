@@ -7,7 +7,14 @@ import docopt
 import IntervalTree
 
 __doc__ = '''
-Usage:  associate_genes.py [options] PEAKFILE BEDFILE BLASTFILE [DESEQ ...]
+Usage:  associate_genes.py [options] PEAKFILE BEDFILE [BLASTFILE DESEQ ...]
+
+Associate genes in BEDFILE with PEAKFILE peaks and add the genes to the table.
+
+Adding a BLASTFILE can be used to add a more descriptive name to otherwise brief
+gene names (e.g. NVE1234 becomes Sox9). If differential expression information
+is associated with the genes with respect to conditions, this can be added to
+the table using the DESEQ argument.
 
 Options:
     --max-distance=DIST         maximum distance to associate a gene with [default: 5000]
@@ -17,6 +24,7 @@ Options:
 '''
 
 args = docopt.docopt(__doc__)
+
 max_distance = int(args['--max-distance'])
 eff_width = int(args['--effective-width'])
 
@@ -102,9 +110,12 @@ class Peak(object):
         self.multiple = False
         self.exonic = False
 
-bf = open(args['BLASTFILE'])
-bf.next()
-blast = {l.split('\t')[1]: l.split('\t')[4] for l in bf}
+if args['BLASTFILE'] is not None:
+    bf = open(args['BLASTFILE'])
+    bf.next()
+    blast = {l.split('\t')[1]: l.split('\t')[4] for l in bf}
+else:
+    blast = {}
 
 pf = open(args['PEAKFILE'])
 new_header = pf.next().strip() + '\tMultiple\tExonic\tGene\tBlast Hit'
