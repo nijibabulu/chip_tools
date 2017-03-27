@@ -13,20 +13,23 @@ import peakzilla_qnorm_mapq_patched as pz
 __doc__ = '''
 Usage: join_peaks.py [options] PEAKS CHIP INPUT [ (PEAKS CHIP INPUT) ... ]
 
+This script finds peaks in common between multiple ChIP experiments determined
+by peakzilla. For each ChIP experiment, input a PEAKS file as otuput by
+peakzilla, and 2 BED files (CHIP and INPUT) as input to peakzilla.
+
+This will output a table with 3 columns identifying the peaks (Chromosome,
+Start, End, Name,'NPeaks','Spread','ChipSE','EnrichSE'). NPeaks signifies the 
+number of peaks that were called among all the ChIP experiments, Spread is the
+difference between the biggest and smallest ChIP peak, ChipSE and EnrichSE are
+the standard error on the mean among the ChIP and Enrich values for the peaks.
+For each experinent "X", information about the peaks are output: 'XPZName','XPZScore',
+'XPZChip','XPZInput','XPZEnrich','XPZFDR','XChip','XInput','XEnrich','XMapq'.
+All 'PZ' columns are the original output from peakzilla and the remaining
+columns are re-calculated in this script (also output regardless of the presence
+of a peak).
+
 Options:
     --max-distance=DIST     maximum summit distance to join peaks [default: 10]
-'''
-
-'''
-Original peakzilla table looks like follows:
-#Chromosome     Start   End     Name    Summit  Score   ChIP    Control FoldEnrichment  DistributionScore       FDR
-
-We can forgo the control values as they can be inferred from the 
-chip/fold_enrichment. Since we are re-normalizing we will currently show the
-old normalized values from these peaks first for debugging. Peak widths will
-always be the same and taken as an average across experiments (or user input).
-
-#Name    Chromosome     Summit  XScore   XChIP    XEnrich XChIPJP XEnrichJP
 '''
 
 args = docopt.docopt(__doc__)
