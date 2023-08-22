@@ -514,7 +514,35 @@ class Peak:
 		self.norm_background = (self.background + 1) * 10**6 / float(total_control)
 		self.signal = (self.nrom_signal - self.norm_background)
 	
+	def _tag_distribution(self, plus_tags_unadj, minus_tags_unadj, filter_width):
+		plus_tags = [tags - self.position + self.shift for tags in plus_tags_unadj]
+		minus_tags = [tags - self.position + self.shift for tags in minus_tags_unadj]
+		plus_dist = [0] * (self.size)
+		minus_dist = [0] * (self.size)
+		# project tags to list
+		for i in plus_tags:
+			plus_dist[i] += 1
+		for i in minus_tags:
+			minus_dist[i] += 1
+		# use a flat moving window to improve S/N ratio
+		# smooth by convolution of the singal with the window
+		plus_freq_dist = convolve(plus_dist, filter_width)
+		minus_freq_dist = convolve(minus_dist, filter_width)
+		if (sum(plus_freq_dist) + sum(minus_freq_dist)) > 0:
+			# normalize distribution height
+			norm_factor = (sum(plus_freq_dist) + sum(minus_freq_dist)) / self.size
+			for i in range(self.size):
+				plus_freq_dist[i] = plus_freq_dist[i]/norm_factor
+				minus_freq_dist[i] = minus_freq_dist[i]/norm_factor
+
+		return (plus_freq_dist,minus_freq_dist)
+
+
 	def determine_tag_distribution(self, filter_width):
+		self.plus_freq_dist, self.minus_freq_dist = self._tag_distribution(
+			self.tags[0], self.tags[1], filter_width)
+
+	def determine_tag_distribution_old(self, filter_width):
 		# return smoothed frequency distribution position of tags
 		# normalize tags for position
 		plus_tags = [tags - self.position + self.shift for tags in self.tags[0]]
@@ -546,6 +574,7 @@ class Peak:
 		model = plus_model[:self.shift] + minus_model[-self.shift:]
 		freq_dist = self.plus_freq_dist[:self.shift] + self.minus_freq_dist[-self.shift:]
 		# dist score is the p-value returned by the chi-square test
+		#print 'calc dist' , freq_dist, model
 		self.dist_score = chisquare(freq_dist, model)[1]
 	
 	def get_score(self):
@@ -856,7 +885,7 @@ class PeakContainer:
 
 	def write_to_stdout(self, options):
 		# write results to stdout
-		sys.stdout.write('#Chromosome\tStart\tEnd\tName\tSummit\tScore\tChIP\tControl\tFoldEnrichment\tDistributionScore\tFDR\n')
+		sys.stdout.write('#Chromosome\tStart\tEnd\tName\tSummit\tScore\tChIP\tControl\tFoldEnrichment\tDistributionScore\tIPDistributionScore\tFDR\n')
 		peak_count = 0
 		for chrom in sorted(self.peaks.keys()):
 			for peak in self.peaks[chrom]:
@@ -873,9 +902,10 @@ class PeakContainer:
 					background = peak.norm_background
 					enrichment = peak.fold_enrichment
 					dist_score = peak.dist_score
+					ip_dist_score = peak.ip_dist_score
 					fdr = peak.fdr
-					output = (chrom, start, end, name, summit, score, signal, background, enrichment, dist_score, fdr)
-					sys.stdout.write('%s\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n' % output)
+					output = (chrom, start, end, name, summit, score, signal, background, enrichment, dist_score, ip_dist_score, fdr)
+					sys.stdout.write('%s\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n' % output)
 		write_log('%d peaks detected' % peak_count, options.log)
 		write_log('Enrichment cutoff: %.1f' % options.enrichment_cutoff, options.log)
 		write_log('Score cutoff: %.1f' % options.score_cutoff, options.log)
