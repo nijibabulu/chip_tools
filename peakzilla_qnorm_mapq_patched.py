@@ -206,14 +206,14 @@ def chisqprob(chisq, df):
 
 def median(numlist):
 	# calculate median
-    s = sorted(numlist)
-    l = len(numlist)
-    if l == 0:
+	s = sorted(numlist)
+	l = len(numlist)
+	if l == 0:
 		return float('nan')
-    if l%2 == 0:
-        return (s[l/2] + s[l/2-1]) / 2.0
-    else:
-        return float(s[l/2])
+	if l%2 == 0:
+		return (s[l/2] + s[l/2-1]) / 2.0
+	else:
+		return float(s[l/2])
 
 def convolve(signal, filter_width):
 	# smooth signal with a flat scanning window of filter_width
@@ -233,7 +233,7 @@ def generate_ideal_model(peaksize):
 	stdev = peaksize / 5 # appears to fit well with empirical data
 	mean_plus_model = (peaksize - 1) / 4
 	mean_minus_model = peaksize - (peaksize - 1) / 4
-	peak_positions = range(1,peaksize + 1)
+	peak_positions = range(1,int(peaksize + 1))
 	def gauss(x, mu, sigma):
 		# gaussian function
 		a = 1
@@ -249,7 +249,7 @@ def generate_ideal_model(peaksize):
 		minus_model.append(gauss(i, mean_minus_model, stdev))
 	# normalize model
 	norm_factor = (sum(plus_model) + sum(minus_model)) / peaksize
-	for i in range(peaksize):
+	for i in range(int(peaksize)):
 		plus_model[i] = plus_model[i]/norm_factor
 		minus_model[i] = minus_model[i]/norm_factor
 	return(plus_model, minus_model)
@@ -321,7 +321,7 @@ class TagContainer:
 				start = int(i[1])
 				end = int(i[5])
 				uid = i[0] + i[1] + i[5]
-                                mapq = int(i[7])
+				mapq = int(i[7])
 				if uid not in uids:
 					self.add_tag(chrom, '+', start, mapq)
 					self.add_tag(chrom, '-', end, mapq)
@@ -517,13 +517,13 @@ class Peak:
 	def _tag_distribution(self, plus_tags_unadj, minus_tags_unadj, filter_width):
 		plus_tags = [tags - self.position + self.shift for tags in plus_tags_unadj]
 		minus_tags = [tags - self.position + self.shift for tags in minus_tags_unadj]
-		plus_dist = [0] * (self.size)
-		minus_dist = [0] * (self.size)
+		plus_dist = [0] * int(self.size)
+		minus_dist = [0] * int(self.size)
 		# project tags to list
 		for i in plus_tags:
-			plus_dist[i] += 1
+			plus_dist[int(i)] += 1
 		for i in minus_tags:
-			minus_dist[i] += 1
+			minus_dist[int(i)] += 1
 		# use a flat moving window to improve S/N ratio
 		# smooth by convolution of the singal with the window
 		plus_freq_dist = convolve(plus_dist, filter_width)
@@ -531,7 +531,7 @@ class Peak:
 		if (sum(plus_freq_dist) + sum(minus_freq_dist)) > 0:
 			# normalize distribution height
 			norm_factor = (sum(plus_freq_dist) + sum(minus_freq_dist)) / self.size
-			for i in range(self.size):
+			for i in range(int(self.size)):
 				plus_freq_dist[i] = plus_freq_dist[i]/norm_factor
 				minus_freq_dist[i] = minus_freq_dist[i]/norm_factor
 
@@ -547,20 +547,20 @@ class Peak:
 		# normalize tags for position
 		plus_tags = [tags - self.position + self.shift for tags in self.tags[0]]
 		minus_tags = [tags - self.position + self.shift for tags in self.tags[1]]
-		plus_dist = [0] * (self.size)
-		minus_dist = [0] * (self.size)
+		plus_dist = [0] * int(self.size)
+		minus_dist = [0] * int(self.size)
 		# project tags to list
 		for i in plus_tags:
-			plus_dist[i] += 1
+			plus_dist[int(i)] += 1
 		for i in minus_tags:
-			minus_dist[i] += 1
+			minus_dist[int(i)] += 1
 		# use a flat moving window to improve S/N ratio
 		# smooth by convolution of the singal with the window
 		self.plus_freq_dist = convolve(plus_dist, filter_width)
 		self.minus_freq_dist = convolve(minus_dist, filter_width)
 		# normalize distribution height
 		norm_factor = (sum(self.plus_freq_dist) + sum(self.minus_freq_dist)) / self.size
-		for i in range(self.size):
+		for i in range(int(self.size)):
 			self.plus_freq_dist[i] = self.plus_freq_dist[i]/norm_factor
 			self.minus_freq_dist[i] = self.minus_freq_dist[i]/norm_factor
 
@@ -571,8 +571,8 @@ class Peak:
 
 	def calc_distribution_score(self, plus_model, minus_model):
 		# concatenate plus and minus distributions and models for testing
-		model = plus_model[:self.shift] + minus_model[-self.shift:]
-		freq_dist = self.plus_freq_dist[:self.shift] + self.minus_freq_dist[-self.shift:]
+		model = plus_model[:int(self.shift)] + minus_model[-int(self.shift):]
+		freq_dist = self.plus_freq_dist[:int(self.shift)] + self.minus_freq_dist[-int(self.shift):]
 		# dist score is the p-value returned by the chi-square test
 		#print 'calc dist' , freq_dist, model
 		self.dist_score = chisquare(freq_dist, model)[1]
@@ -611,12 +611,8 @@ class PeakContainer:
 	def qnorm_peaks(self, control_peaks):
 		all_peaks = list(itertools.chain(itertools.chain.from_iterable(self.peaks.values()),
 			itertools.chain.from_iterable(control_peaks.peaks.values())))
-		ip_ranks = sorted(range(len(all_peaks)),
-						  lambda i,j: cmp(all_peaks[i].score,
-									      all_peaks[j].score))
-		control_ranks = sorted(range(len(all_peaks)),
-							   lambda i,j: cmp(all_peaks[i].background,
-											   all_peaks[j].background))
+		ip_ranks = sorted(range(len(all_peaks)), key=lambda i: all_peaks[i].score)
+		control_ranks = sorted(range(len(all_peaks)), key=lambda i: all_peaks[i].score)
 		#for i in range(len(all_peaks)):
 			#print '%.1f\t%.1f\t%.1f\t%.1f' %  (
 					#all_peaks[control_ranks[i]].score,
@@ -649,9 +645,9 @@ class PeakContainer:
 		plus = self.plus_model
 		minus = self.minus_model
 		for tag in self.plus_window:
-			score += plus[tag + tag_shift]
+			score += plus[int(tag + tag_shift)]
 		for tag in self.minus_window:
-			score += minus[tag + tag_shift]
+			score += minus[int(tag + tag_shift)]
 		return score
 	
 	def find_peaks(self, chrom):
@@ -792,8 +788,8 @@ class PeakContainer:
 			plus_dist, minus_dist = peak._tag_distribution(
 				self.plus_window,self.minus_window,11) 
 
-			bg_dist = plus_dist[:peak.shift] + minus_dist[-peak.shift:]
-			ip_dist = peak.plus_freq_dist[:peak.shift] + peak.minus_freq_dist[-peak.shift:]
+			bg_dist = plus_dist[:int(peak.shift)] + minus_dist[-int(peak.shift):]
+			ip_dist = peak.plus_freq_dist[:int(peak.shift)] + peak.minus_freq_dist[-int(peak.shift):]
 
 			peak.ip_dist_score = chisquare(bg_dist, ip_dist)[1]
 
@@ -833,7 +829,7 @@ class PeakContainer:
 			minus_model = map(add, minus_tags, minus_model)
 		# nromalize model for number of total peaks
 		norm_factor = (sum(plus_model) + sum(minus_model)) / self.peak_size
-		for i in range(self.peak_size):
+		for i in range(int(self.peak_size)):
 			plus_model[i] = plus_model[i]/norm_factor
 			minus_model[i] = minus_model[i]/norm_factor
 		return (plus_model, minus_model)
@@ -938,8 +934,8 @@ class PeakContainer:
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        sys.stderr.write("Program canceled by user!\n")
-        sys.exit(0)
+	try:
+		main()
+	except KeyboardInterrupt:
+		sys.stderr.write("Program canceled by user!\n")
+		sys.exit(0)
